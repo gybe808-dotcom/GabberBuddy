@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Builds a release package and publishes the GabberBuddy site (web installer, emulator, manual) to GitHub Pages.
+# One-time setup: repo Settings > Pages > Source: "GitHub Actions" (a private repo needs a paid GitHub plan; a public one is free).
+# Run it from the Actions tab: "Publish site" -> "Run workflow".
+name: Publish site
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+env:
+  GB_VERSION: 0.0.1-beta
+jobs:
+  site:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python deps
+        run: pip3 install Pillow
+      - name: JieLi toolchain
+        run: tools/get_toolchain.sh
+      - name: JieLi AC79 SDK
+        run: |
+          git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 \
+            https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
+      - name: Emscripten (for the in-browser emulator)
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
+          "$HOME/emsdk/emsdk" install latest
+          "$HOME/emsdk/emsdk" activate latest
+      - name: Build the package, the emulator and the site
+        run: |
+          set -o pipefail
+          . "$HOME/emsdk/emsdk_env.sh"
+          ./build.sh --release "$GB_VERSION" 2>&1 | tee build.log
+          X0X_VERSION="$GB_VERSION" sh web/emu/build.sh
+          python3 tools/make_pages.py "build/x0x-$GB_VERSION.fwsc" "$GB_VERSION" build/pages
+      - name: Size report
+        if: always()
+        run: |
+          { echo '### Build output (last lines)'; echo '```'; tail -30 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/pages
+      - id: deploy
+        uses: actions/deploy-pages@v4
