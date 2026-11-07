@@ -54,6 +54,10 @@ static const fx_pspec_t fx_p[FX_NPARAMS] = {
     [FX_DL_WIDTH] = { { "Width", 127, 20, 0 }, CV_LIN, 0, 0.0f, 1.0f },  /* X0X: ping-pong, 0 = off */
     /* gabber: the master's bit crusher, after the distortion. BITS: 0 = off, then 12 bits down to 1.5; RATE: the
      * sample rate falls from 44.1 kHz (0) by up to 32x (127), held samples, no filter: the aliasing is the sound */
+    /* gabber: BASS / MID / HIGH, 64 = flat, down to -24 dB and up to +12 dB (more cut than boost: it is for taming) */
+    [FX_EQ_LO]    = { { "Bass", 127, 64, 0 }, CV_SW, 0, 0.0f, 0.0f },
+    [FX_EQ_MID]   = { { "Mid", 127, 64, 0 }, CV_SW, 0, 0.0f, 0.0f },
+    [FX_EQ_HI]    = { { "High", 127, 64, 0 }, CV_SW, 0, 0.0f, 0.0f },
     [FX_CR_BITS]  = { { "Bits", 127, 0, 0 }, CV_LIN, 0, 0.0f, 127.0f },
     [FX_CR_RATE]  = { { "Rate", 127, 0, 0 }, CV_LIN, 0, 0.0f, 127.0f },
 };
@@ -127,6 +131,13 @@ static void fx_apply(fxbus_t *f, int i, float v)
     case FX_DL_TYPE: f->dl_type = (int32_t)v; break;
     case FX_DL_WEAR: f->wear = v; break;
     case FX_DL_WIDTH: fx_dl_width(f, v); break;
+    case FX_EQ_LO: case FX_EQ_MID: case FX_EQ_HI: {
+        const float db = v < 64.0f ? (v - 64.0f) * (24.0f / 64.0f) : (v - 64.0f) * (12.0f / 63.0f);
+        const float g = v == 64.0f ? 1.0f : fm_db2lin(db);
+        if (i == FX_EQ_LO) f->eq_gl = g; else if (i == FX_EQ_MID) f->eq_gm = g; else f->eq_gh = g;
+        f->eq_on = f->pots[FX_EQ_LO] != 64 || f->pots[FX_EQ_MID] != 64 || f->pots[FX_EQ_HI] != 64;
+        break;
+    }
     case FX_CR_BITS: {
         const float bits = 12.0f - (v - 1.0f) * (10.5f / 126.0f);      /* pot 1 = 12 bits, 127 = 1.5 */
         f->cr_lv = v < 0.5f ? 0.0f : fm_exp2f(bits - 1.0f);             /* levels each side of zero */
@@ -821,6 +832,30 @@ static void fx_crush(fxbus_t *f, float *l, float *r, int n)
     f->cr_hr = hr;
 }
 
+/* gabber: the tone control: MID is the gain of everything, BASS a shelf below ~200 Hz and HIGH a shelf above
+ * ~3 kHz that bring their ends to their own gains (gentle, 6 dB an octave: a shelf, not a brick wall). With all
+ * three at 1 it is the input. Not called while all three knobs are flat. r may be 0 (mono). */
+static void fx_eq(fxbus_t *f, float *l, float *r, int n)
+{
+    if (!f->eq_on)
+        return;
+    const float al = 0.0281f, ah = 0.3478f, gl = f->eq_gl, gm = f->eq_gm, gh = f->eq_gh;
+    float l1 = f->eq_zl[0], h1 = f->eq_zh[0], l2 = f->eq_zl[1], h2 = f->eq_zh[1];
+    for (int i = 0; i < n; ++i) {
+        const float x = l[i];
+        l1 = fm_flush(l1 + al * (x - l1));
+        h1 = fm_flush(h1 + ah * (x - h1));
+        l[i] = gm * x + (gl - gm) * l1 + (gh - gm) * (x - h1);
+        if (r) {
+            const float y = r[i];
+            l2 = fm_flush(l2 + al * (y - l2));
+            h2 = fm_flush(h2 + ah * (y - h2));
+            r[i] = gm * y + (gl - gm) * l2 + (gh - gm) * (y - h2);
+        }
+    }
+    f->eq_zl[0] = l1; f->eq_zh[0] = h1; f->eq_zl[1] = l2; f->eq_zh[1] = h2;
+}
+
 /* ===================================================================== */
 /* Master: distortion, glue (master_glue), volume                         */
 /* ===================================================================== */
@@ -842,6 +877,7 @@ void fxbus_process(fxbus_t *f, const float *dry, const float *rev, const float *
             out[i] = d9_shape(&f->shape, out[i] * k, f->crush_st) * 0.7f;
     }
     fx_crush(f, out, 0, n);
+    fx_eq(f, out, 0, n);
     if (f->comp > 0.001f) {
         const float thr = f->c_thr, slope = f->c_slope, makeup = f->c_makeup;
         const float drel = f->c_drel, atk = f->c_atk, rel = f->c_rel;
@@ -891,6 +927,7 @@ void fxbus_process_st(fxbus_t *f, const float *dry_l, const float *dry_r, const 
         }
     }
     fx_crush(f, out_l, out_r, n);
+    fx_eq(f, out_l, out_r, n);
     if (f->comp > 0.001f) {
         const float thr = f->c_thr, slope = f->c_slope, makeup = f->c_makeup;
         const float drel = f->c_drel, atk = f->c_atk, rel = f->c_rel;

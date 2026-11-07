@@ -101,6 +101,7 @@ enum { FX_VOLUME, FX_DIST, FX_DRIVE, FX_COMP,
        FX_DL_TIME, FX_DL_FDBK, FX_DL_TONE, FX_DL_LEVEL,
        FX_DL_HPF, FX_DL_TYPE, FX_DL_WEAR, FX_DL_PING,
        FX_DL_TAPE, FX_DL_WIDTH,
+       FX_EQ_LO, FX_EQ_MID, FX_EQ_HI,         /* gabber: a 3-band tone control on the master (64 = flat) */
        FX_CR_BITS, FX_CR_RATE,                /* gabber: the master's bit crusher (0 = off, so older sounds are as they were) */
        FX_NPARAMS };
 
@@ -125,6 +126,9 @@ struct fxbus {
     d9_shape_t shape;
     float crush_st[2], crush_str[2];
     float cr_lv, cr_inv, cr_div;      /* bit crusher: levels per unit, 1 / levels (0 = no quantise), samples held */
+    float eq_gl, eq_gm, eq_gh;        /* tone control: the three bands' gains, linear (all 1 = off) */
+    float eq_zl[2], eq_zh[2];         /* its two one-pole low-passes (200 Hz, 3 kHz), L and R */
+    uint8_t eq_on;
     float cr_ph, cr_hl, cr_hr;        /* its hold counter and held samples (L, R) */
     float comp_env_db, comp_det, c_thr, c_slope, c_makeup, c_drel, c_atk, c_rel;
     uint8_t pots[FX_NPARAMS];

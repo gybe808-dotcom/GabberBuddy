@@ -508,6 +508,9 @@ int project_load(void)
     if (sound_ok && proj.set.snd_rev < 6)             /* before PING WIDTH: PING-PONG on is full width, off 0 */
         proj.sound.v[T_FX][FX_VOICE(FX_DL_WIDTH)][FX_INDEX(FX_DL_WIDTH)] =
             proj.sound.v[T_FX][0][FX_DL_PING] ? 127 : 0;
+    if (sound_ok && proj.set.snd_rev < 7)             /* before the master EQ: flat (its pots held 0 = -24 dB) */
+        for (i = FX_EQ_LO; i <= FX_EQ_HI; i++)
+            proj.sound.v[T_FX][FX_VOICE(i)][FX_INDEX(i)] = 64;
     proj.set.snd_rev = PROJ_SND_REV;
     return bad ? -1 : 0;
 }

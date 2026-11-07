@@ -392,6 +392,15 @@ static void pref_set(pref_t r, int v)
                 proj.sound.v[T_909][vo][ix] = (uint8_t)pt;
                 engine_set(T_909, vo, ix, pt);
             }
+            {   /* the 303s too: stock = Drive 0 (bypass), GAB-S = Soft saturation hard-driven, GAB-F = the RAT fuzz */
+                static const uint8_t DRV[3] = {0, 105, 100}, TYP[3] = {BASS303_DRV_SOFT, BASS303_DRV_SOFT, BASS303_DRV_RAT};
+                for (n = 0; n < 2; n++) {
+                    proj.sound.v[T_303][n][BASS303_DRIVE] = DRV[v];
+                    proj.sound.v[T_303][n][BASS303_DRVTYPE] = TYP[v];
+                    engine_set(T_303, n, BASS303_DRIVE, DRV[v]);
+                    engine_set(T_303, n, BASS303_DRVTYPE, TYP[v]);
+                }
+            }
         }
         if (r.a == T_MST && r.c == MST_COMP1)          /* the macros: the details they set, for the list */
             master_comp1_pots(v, &proj.sound.v[T_MST][0][MST_THRESH], &proj.sound.v[T_MST][0][MST_RATIO],
@@ -553,6 +562,9 @@ static const char *pref_name(pref_t r)
         case FX_DL_LEVEL: return "DLY RETURN";
         case FX_DL_WIDTH: return "PING WIDTH";
         case FX_COMP: return "GLUE";
+        case FX_EQ_LO: return "EQ BASS";
+        case FX_EQ_MID: return "EQ MID";
+        case FX_EQ_HI: return "EQ HIGH";
         case FX_CR_BITS: return "CRUSH BITS";
         case FX_CR_RATE: return "CRUSH RATE";
         default: break;
@@ -887,6 +899,8 @@ static void build_pages(void)
         }
         add_page("MASTER", PR(R_ENG, T_FX, 0, FX_DRIVE), PR(R_ENG, T_MST, 0, MST_COMP1), PR(R_ENG, T_MST, 0, MST_PUMP),
                  PR(R_ENG, T_MST, 0, MST_DJF));
+        add_page("EQ", PR(R_ENG, T_FX, FX_VOICE(FX_EQ_LO), FX_INDEX(FX_EQ_LO)), PR(R_ENG, T_FX, FX_VOICE(FX_EQ_MID), FX_INDEX(FX_EQ_MID)),
+                 PR(R_ENG, T_FX, FX_VOICE(FX_EQ_HI), FX_INDEX(FX_EQ_HI)), NONE);
         more(PR(R_ENG, T_MST, 0, MST_THRESH));
         more(PR(R_ENG, T_MST, 0, MST_RATIO));
         more(PR(R_ENG, T_MST, 0, MST_ATTACK));
