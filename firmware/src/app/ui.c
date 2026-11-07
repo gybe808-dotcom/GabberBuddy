@@ -553,6 +553,8 @@ static const char *pref_name(pref_t r)
         case FX_DL_LEVEL: return "DLY RETURN";
         case FX_DL_WIDTH: return "PING WIDTH";
         case FX_COMP: return "GLUE";
+        case FX_CR_BITS: return "CRUSH BITS";
+        case FX_CR_RATE: return "CRUSH RATE";
         default: break;
         }
     }
@@ -895,6 +897,8 @@ static void build_pages(void)
         more(PR(R_ENG, T_MST, 0, MST_RESO));
         more(PR(R_ENG, T_MST, 0, MST_LIMIT));
         more(PR(R_ENG, T_FX, 0, FX_DIST));
+        more(PR(R_ENG, T_FX, FX_VOICE(FX_CR_BITS), FX_INDEX(FX_CR_BITS)));
+        more(PR(R_ENG, T_FX, FX_VOICE(FX_CR_RATE), FX_INDEX(FX_CR_RATE)));
         more(PR(R_ENG, T_FX, 0, FX_COMP));
         more(PR(R_ENG, T_FX, 0, FX_VOLUME));
         break;

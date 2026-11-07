@@ -280,6 +280,11 @@ D9_NOINLINE float d9_shape_other(const d9_shape_t *s, float x, float *st)
         if (st[1] >= s->c2) { st[1] -= s->c2; st[0] = q; }
         return st[0];
     }
+    case 7: {   /* HClip (the master's, not the voices'): a hard clip at the drive, the corners left on */
+        float v = x * k;
+        v = v > 1.0f ? 1.0f : (v < -1.0f ? -1.0f : v);
+        return v;
+    }
     case 2: {   /* SAT */
         const float u = x * k + s->c1 * x * x;
         const float wet = u / (1.0f + fm_fabsf(u));

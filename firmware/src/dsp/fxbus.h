@@ -100,7 +100,9 @@ enum { FX_VOLUME, FX_DIST, FX_DRIVE, FX_COMP,
        FX_RV_DECAY, FX_RV_TONE, FX_RV_HPF, FX_RV_LEVEL,
        FX_DL_TIME, FX_DL_FDBK, FX_DL_TONE, FX_DL_LEVEL,
        FX_DL_HPF, FX_DL_TYPE, FX_DL_WEAR, FX_DL_PING,
-       FX_DL_TAPE, FX_DL_WIDTH, FX_NPARAMS };
+       FX_DL_TAPE, FX_DL_WIDTH,
+       FX_CR_BITS, FX_CR_RATE,                /* gabber: the master's bit crusher (0 = off, so older sounds are as they were) */
+       FX_NPARAMS };
 
 struct fxbus {
     /* reverb */
@@ -122,6 +124,8 @@ struct fxbus {
     int32_t dist_mode;
     d9_shape_t shape;
     float crush_st[2], crush_str[2];
+    float cr_lv, cr_inv, cr_div;      /* bit crusher: levels per unit, 1 / levels (0 = no quantise), samples held */
+    float cr_ph, cr_hl, cr_hr;        /* its hold counter and held samples (L, R) */
     float comp_env_db, comp_det, c_thr, c_slope, c_makeup, c_drel, c_atk, c_rel;
     uint8_t pots[FX_NPARAMS];
     fx_room_t room;                   /* the reverb's lines and state */

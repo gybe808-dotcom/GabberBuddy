@@ -20,7 +20,7 @@ typedef struct {
     float lo, hi;
 } fx_pspec_t;
 
-static const char *const fx_dist_names[8] = { "Off", "Diode", "Clip", "SAT", "BFZ", "PDIST", "Fold", "Crush" };
+static const char *const fx_dist_names[9] = { "Off", "Diode", "Clip", "SAT", "BFZ", "PDIST", "Fold", "Crush", "HClip" };
 static const char *const fx_div_names[13] = {
     "1/32", "1/16T", "1/16", "1/8T", "1/16.", "1/8", "1/4T", "1/8.", "1/4", "1/2T", "1/4.", "1/2", "1/2."
 };
@@ -31,7 +31,7 @@ static const char *const fx_onoff_names[2] = { "OFF", "ON" };
  * starts on the exact defaults) */
 static const fx_pspec_t fx_p[FX_NPARAMS] = {
     [FX_VOLUME]   = { { "Volume", 127, 44, 0 }, CV_LIN, 0, 0.0f, 1.0f },
-    [FX_DIST]     = { { "Dist", 7, 0, fx_dist_names }, CV_SW, 0, 0.0f, 0.0f },
+    [FX_DIST]     = { { "Dist", 8, 0, fx_dist_names }, CV_SW, 0, 0.0f, 0.0f },
     [FX_DRIVE]    = { { "Drive", 127, 41, 0 }, CV_EXP, X0X_EXP_DRIVE, 0.0f, 0.0f },
     [FX_COMP]     = { { "Comp", 127, 0, 0 }, CV_LIN, 0, 0.0f, 1.0f },
     [FX_RV_DECAY] = { { "RvDec", 127, 73, 0 }, CV_LIN, 0, 0.2f, 0.93f },
@@ -52,6 +52,10 @@ static const fx_pspec_t fx_p[FX_NPARAMS] = {
      * left. It sets DlType and Wear, which are what the delay plays; it plays nothing itself. */
     [FX_DL_TAPE]  = { { "Tape", 127, 72, 0 }, CV_SW, 0, 0.0f, 0.0f },
     [FX_DL_WIDTH] = { { "Width", 127, 20, 0 }, CV_LIN, 0, 0.0f, 1.0f },  /* X0X: ping-pong, 0 = off */
+    /* gabber: the master's bit crusher, after the distortion. BITS: 0 = off, then 12 bits down to 1.5; RATE: the
+     * sample rate falls from 44.1 kHz (0) by up to 32x (127), held samples, no filter: the aliasing is the sound */
+    [FX_CR_BITS]  = { { "Bits", 127, 0, 0 }, CV_LIN, 0, 0.0f, 127.0f },
+    [FX_CR_RATE]  = { { "Rate", 127, 0, 0 }, CV_LIN, 0, 0.0f, 127.0f },
 };
 
 int fxbus_nparams(void) { return FX_NPARAMS; }
@@ -123,6 +127,13 @@ static void fx_apply(fxbus_t *f, int i, float v)
     case FX_DL_TYPE: f->dl_type = (int32_t)v; break;
     case FX_DL_WEAR: f->wear = v; break;
     case FX_DL_WIDTH: fx_dl_width(f, v); break;
+    case FX_CR_BITS: {
+        const float bits = 12.0f - (v - 1.0f) * (10.5f / 126.0f);      /* pot 1 = 12 bits, 127 = 1.5 */
+        f->cr_lv = v < 0.5f ? 0.0f : fm_exp2f(bits - 1.0f);             /* levels each side of zero */
+        f->cr_inv = v < 0.5f ? 0.0f : 1.0f / f->cr_lv;
+        break;
+    }
+    case FX_CR_RATE: f->cr_div = fm_exp2f(v * (5.0f / 127.0f)); break;   /* 1x .. 32x */
     default: break;
     }
     if (i == FX_DIST || i == FX_DRIVE)
@@ -785,6 +796,31 @@ static void fx_delay(fxbus_t *f, const float *in, float *out, float *out_r, int 
     f->dl_quiet = quiet;
 }
 
+/* gabber: the bit crusher. Quantise to BITS, then hold each sample for RATE's divisor (a fractional hold
+ * counter, shared by both sides so the image holds). Off (no bits, no divisor) it is not called into. */
+static void fx_crush(fxbus_t *f, float *l, float *r, int n)
+{
+    const float lv = f->cr_lv, inv = f->cr_inv, div = f->cr_div;
+    if (lv == 0.0f && div <= 1.0001f)
+        return;
+    float ph = f->cr_ph, hl = f->cr_hl, hr = f->cr_hr;
+    for (int i = 0; i < n; ++i) {
+        ph += 1.0f;
+        if (ph >= div) {                              /* a new held sample (every one, at 1x) */
+            ph -= div;
+            hl = lv != 0.0f ? fm_floorf(l[i] * lv + 0.5f) * inv : l[i];
+            if (r)
+                hr = lv != 0.0f ? fm_floorf(r[i] * lv + 0.5f) * inv : r[i];
+        }
+        l[i] = hl;
+        if (r)
+            r[i] = hr;
+    }
+    f->cr_ph = ph;
+    f->cr_hl = hl;
+    f->cr_hr = hr;
+}
+
 /* ===================================================================== */
 /* Master: distortion, glue (master_glue), volume                         */
 /* ===================================================================== */
@@ -805,6 +841,7 @@ void fxbus_process(fxbus_t *f, const float *dry, const float *rev, const float *
         for (int i = 0; i < n; ++i)
             out[i] = d9_shape(&f->shape, out[i] * k, f->crush_st) * 0.7f;
     }
+    fx_crush(f, out, 0, n);
     if (f->comp > 0.001f) {
         const float thr = f->c_thr, slope = f->c_slope, makeup = f->c_makeup;
         const float drel = f->c_drel, atk = f->c_atk, rel = f->c_rel;
@@ -853,6 +890,7 @@ void fxbus_process_st(fxbus_t *f, const float *dry_l, const float *dry_r, const 
             out_r[i] = d9_shape(&f->shape, out_r[i] * k, f->crush_str) * 0.7f;
         }
     }
+    fx_crush(f, out_l, out_r, n);
     if (f->comp > 0.001f) {
         const float thr = f->c_thr, slope = f->c_slope, makeup = f->c_makeup;
         const float drel = f->c_drel, atk = f->c_atk, rel = f->c_rel;
