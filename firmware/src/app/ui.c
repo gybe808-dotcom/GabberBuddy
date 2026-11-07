@@ -386,9 +386,16 @@ static void pref_set(pref_t r, int v)
     case R_ENG:
         proj.sound.v[r.a][r.b][r.c] = (uint8_t)v;
         engine_set(r.a, r.b, r.c, v);
-        if (r.a == T_FX && r.b == 0 && r.c == FX_DRIVE && v > 0 && !proj.sound.v[T_FX][0][FX_DIST]) {
-            proj.sound.v[T_FX][0][FX_DIST] = 3;          /* the master DRIVE does nothing while DIST is OFF: turning it up */
-            engine_set(T_FX, 0, FX_DIST, 3);             /* from OFF turns DIST on, to SAT (the SEL list still picks any) */
+        /* the master DRIVE is the amount, the Style picks the kind: 909 = Diode, GAB-S = SAT, GAB-F = Fold; 0 = off.
+         * Moving DRIVE or Style re-applies it (the SEL list still picks any other type until the next move). */
+        if ((r.a == T_FX && r.b == 0 && r.c == FX_DRIVE) || (r.a == T_909 && r.b == DR_KIT && r.c == DR_KIT_STYLE)) {
+            static const uint8_t kind[3] = { 1, 3, 6 };
+            int st = proj.sound.v[T_909][DR_KIT][DR_KIT_STYLE];
+            int d = proj.sound.v[T_FX][0][FX_DRIVE] ? kind[st > 2 ? 0 : st] : 0;
+            if (proj.sound.v[T_FX][0][FX_DIST] != d) {
+                proj.sound.v[T_FX][0][FX_DIST] = (uint8_t)d;
+                engine_set(T_FX, 0, FX_DIST, d);
+            }
         }
         if (r.a == T_909 && r.b == DR_KIT && r.c == DR_KIT_STYLE) {   /* gabber909: the style sets its voices' pots */
             int vo, ix, pt, n;
