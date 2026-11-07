@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Builds the firmware on GitHub's Linux x86-64 runners (the JieLi toolchain runs natively there).
+# Run it from the Actions tab: "Build firmware" -> "Run workflow". The size report is in the job
+# summary; the .fwsc package and the full log are attached as downloads.
+name: Build firmware
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python deps
+        run: pip3 install Pillow
+      - name: JieLi toolchain
+        run: tools/get_toolchain.sh
+      - name: JieLi AC79 SDK
+        run: |
+          git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 \
+            https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$HOME/fw-AC79_AIoT_SDK"
+      - name: Build
+        run: |
+          set -o pipefail
+          ./build.sh 2>&1 | tee build.log
+      - name: Size report
+        if: always()
+        run: |
+          { echo '### Build output (last lines)'; echo '```'; tail -40 build.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          ls -l build/*.fwsc build/*.bin >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gabberbuddy-build
+          path: |
+            build/*.fwsc
+            build/x0x.bin
+            build.log
