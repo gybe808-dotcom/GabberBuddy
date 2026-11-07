@@ -43,6 +43,7 @@ static bass303_fixed_t bass303_k;     /* the coefficients every instance shares 
 
 static const char *const wave_names[] = { "Saw", "Sqr" };
 static const char *const saws_names[] = { "3", "5", "7" };
+static const char *const noise_names[] = { "Off", "Long", "Short", "Chaos" };
 static const char *const drv_names[] = { "Off", "Soft", "RAT" };
 
 /* defaults are schwung-303's (every knob at 0.5, Devilfish values stock), except Volume,
@@ -62,6 +63,9 @@ static const x0x_param_t params[BASS303_NPARAMS] = {
     { "AccDec", 127, 7, 0 },         /* 30 .. 3000 ms (Devilfish); 7 = 194 ms, stock is 200 */
     { "Super", 127, 0, 0 },          /* gabber: 0 = off (the plain saw), else the saws' detune: 0.4 .. 12 % a step */
     { "Saws", 2, 0, saws_names },    /* gabber: 3, 5 or 7 saws in all */
+    { "Noise", 3, 0, noise_names },  /* gabber: 0 = the wave; else an 8-bit noise oscillator: Long (15-bit LFSR), Short (7-bit:
+                                      * tonal, metallic), Chaos (xorshift) */
+    { "NzClk", 127, 64, 0 },         /* gabber: the noise's clock, 1/8 .. 256 steps a cycle of the note (64 = 8 steps) */
 };
 
 int bass303_nparams(void) { return BASS303_NPARAMS; }
@@ -202,6 +206,9 @@ void bass303_set(bass303_t *b, int i, int v)
         break;
     case BASS303_ACCENT:
         b->accent = n;
+        break;
+    case BASS303_NZCLK:                                        /* 2^-3 .. 2^8 */
+        b->nz_ratio = c_exp2f(-3.0f + 11.0f * n);
         break;
     case BASS303_SUPER:
         b->sup_dr = v ? 0.0039f * (1.0f + (float)(v - 1) * (31.0f / 126.0f)) : 0.0f;
@@ -350,6 +357,7 @@ void bass303_init(bass303_t *b)
     for (i = 0; i < BASS303_NPARAMS; i++)
         bass303_set(b, i, params[i].def);
 
+    b->nz_l = 0x4a5b;                                          /* the noise register: never 0 */
     for (i = 0; i < 6; i++)                                    /* the super-saw's saws start apart */
         b->sph[i] = 0.137f * (float)(i + 1);
     b->osc_freq = b->slew_y = 440.0f;
@@ -846,6 +854,50 @@ static void osc_super_samples(bass303_t *b, const bass303_cs_t *cs, float *hb, i
     b->hp1_y1 = hp1y;
 }
 
+/* gabber NOISE: an 8-bit noise oscillator. A 15-bit shift register (the NES's, or a xorshift) steps NZCLK times a
+ * cycle of the note; the sample is its low byte, held between steps, then the same highpass. Plain steps, no
+ * filter: the aliasing is the sound. One small function in flash. */
+static void osc_noise_samples(bass303_t *b, const bass303_cs_t *cs, float *hb, int n, int nos)
+{
+    const int mode = b->pot[BASS303_NOISE];
+    const float ratio = b->nz_ratio, hp1_b0 = bass303_k.hp1_b0, hp1_a1 = bass303_k.hp1_a1;
+    float acc = b->nz_acc, hp1x = b->hp1_x1, hp1y = b->hp1_y1;
+    uint32_t l = b->nz_l;
+    int i, q;
+    for (i = 0; i < n; i++) {
+        float step = cs[i].inc * ratio;                         /* register steps a sample */
+        if (step > 3.0f)
+            step = 3.0f;
+        for (q = 0; q < nos; q++) {
+            float s, ym;
+            acc += step;
+            while (acc >= 1.0f) {
+                acc -= 1.0f;
+                if (mode == 3) {                                /* xorshift16 (7, 9, 8) */
+                    l ^= l << 7;
+                    l ^= l >> 9;
+                    l ^= l << 8;
+                    l &= 0xffffu;
+                } else {                                        /* NES: long taps 0 and 1, short 0 and 6 */
+                    const uint32_t bit = (l ^ (l >> (mode == 2 ? 6 : 1))) & 1u;
+                    l = (l >> 1) | (bit << 14);
+                }
+                if (l == 0)
+                    l = 1;
+            }
+            s = (float)((int)(l & 255u) - 128) * (0.7f / 128.0f);
+            ym = hp1_b0 * (s - hp1x) + hp1_a1 * hp1y;
+            hp1x = s;
+            hp1y = ym;
+            *hb++ = ym;
+        }
+    }
+    b->nz_acc = acc;
+    b->nz_l = (uint16_t)l;
+    b->hp1_x1 = hp1x;
+    b->hp1_y1 = hp1y;
+}
+
 /* 1c: the TeeBeeFilter (its feedback through the highpass) on x's n * nos values, in place */
 static inline __attribute__((always_inline)) void ladder_samples(bass303_t *b, const bass303_cs_t *cs, float *x,
                                                                  int n, int nos)
@@ -886,7 +938,13 @@ static void run_voice(bass303_t *b, float *ab, float *osb, int n, int nos)
 {
     bass303_cs_t cs[BASS303_SUB];
     run_control(b, cs, ab, n);
-    if (b->pot[BASS303_SUPER] && !b->wave && !(BASS303_LITE && b->lite)) {   /* gabber SUPER (Saw wave, not in lite) */
+    if (b->pot[BASS303_NOISE]) {                                              /* gabber NOISE (any wave, lite too: it is cheap) */
+        osc_noise_samples(b, cs, osb, n, nos);
+        if (nos == BASS303_OS)
+            run_ladder(b, cs, osb, n);
+        else
+            ladder_samples(b, cs, osb, n, nos);
+    } else if (b->pot[BASS303_SUPER] && !b->wave && !(BASS303_LITE && b->lite)) {   /* gabber SUPER (Saw wave, not in lite) */
         osc_super_samples(b, cs, osb, n, nos);
         if (nos == BASS303_OS)
             run_ladder(b, cs, osb, n);

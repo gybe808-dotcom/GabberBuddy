@@ -461,7 +461,7 @@ static const seq_sink_t SINK = {s_drum_seq, s_bon, s_boff, s_brk, s_brkstop, s_m
 /* The fixed CC map (engine.h). A part's CCs on its own channel, the mixer's, the FX's and the master's on
  * MIX MIDI CH. In: the ISR passes each CC to the main loop through a ring (ui.c midicc.c sets it as its
  * knob). Out: the main loop sends what is changed by hand, the ISR what the lanes play (ALL), notes first. */
-static const uint8_t BASS_CC[BASS303_NPARAMS] = {16, 17, 18, 19, 20, 21, 24, 25, 22, 26, 23, 27, 255, 255};   /* (255: SUPER and SAWS have no CC) */
+static const uint8_t BASS_CC[BASS303_NPARAMS] = {16, 17, 18, 19, 20, 21, 24, 25, 22, 26, 23, 27, 255, 255, 255, 255};   /* (255: SUPER, SAWS, NOISE and NZCLK have no CC) */
 /* each drum voice's Level, Tune and Decay pots (255: none); tests/host/midicc_test.c checks them by name */
 #define NO_POT 255u
 static const uint8_t DRUM_POT[NKIT][NDRUM][3] = {

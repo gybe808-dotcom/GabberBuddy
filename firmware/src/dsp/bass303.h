@@ -76,6 +76,7 @@ enum {
     BASS303_ACCENT, BASS303_WAVE, BASS303_TUNE, BASS303_VOLUME,      /* page 2 */
     BASS303_DRIVE, BASS303_DRVTYPE, BASS303_SLIDE, BASS303_ACCDEC,   /* page 3 */
     BASS303_SUPER, BASS303_SAWS,                                     /* gabber: the super-saw (Saw wave only) */
+    BASS303_NOISE, BASS303_NZCLK,                                    /* gabber: the 8-bit noise oscillator (replaces the wave) */
     BASS303_NPARAMS
 };
 enum { BASS303_DRV_OFF, BASS303_DRV_SOFT, BASS303_DRV_RAT };
@@ -120,6 +121,8 @@ typedef struct bass303 {
     float phase;             /* oscillator phase in turns, 0..1 */
     float sph[6];            /* gabber SUPER: the extra saws' phases (up to 6 beside the main one) */
     float sup_dr;            /* their detune, the step in frequency ratio between neighbours */
+    float nz_acc, nz_ratio;  /* NOISE: the clock's fraction of a step, and its steps per cycle of the note */
+    uint16_t nz_l;           /* NOISE: the shift register */
     float env_c, env_y;      /* main (filter) decay envelope */
     float rc1_y, rc2_y;
     float accent_gain;

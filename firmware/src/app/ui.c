@@ -867,6 +867,8 @@ static void build_pages(void)
             more(PR(R_ENG, T_303, b, BASS303_ACCDEC));
             more(PR(R_ENG, T_303, b, BASS303_SUPER));
             more(PR(R_ENG, T_303, b, BASS303_SAWS));
+            more(PR(R_ENG, T_303, b, BASS303_NOISE));
+            more(PR(R_ENG, T_303, b, BASS303_NZCLK));
         } else {
             pg_grp = GR_PAT;                           /* (its groove and retrigs: SEQ) */
             add_page("LOOPS", PR(R_BRKSLOT, 0, 0, 0), PR(R_BRKSLOT, 1, 0, 0), PR(R_BRKSET, 0, 0, BRK_BCHANCE),
