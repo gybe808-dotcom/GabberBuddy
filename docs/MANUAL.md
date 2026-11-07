@@ -1007,6 +1007,9 @@ one second play in the middle instead.
 
 ## 19. Credits
 
+**GabberBuddy** is a free, non-commercial hack of X0X by Charles Vestal (github.com/charlesvestal/fm1-x0x), which is built on
+Felucca by Leo Kuroshita, Hügelton Instruments. Everything below is X0X's list and applies to GabberBuddy too.
+
 X0X is free software under the GNU General Public License, version 3. If you share the
 firmware, you must also share its source code.
 

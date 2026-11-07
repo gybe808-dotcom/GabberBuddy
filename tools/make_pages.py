@@ -91,6 +91,10 @@ firmware back. You install it at your own risk. It is early: it has not had much
   <a href="firmware/__PKG__"><strong>Download __PKG__</strong><span>For the command-line installer: <code>python3 tools/fm1_install.py __PKG__</code></span></a>
   <a href="__REPO__"><strong>Source</strong><span>On GitHub under GPL-3.0. A hack of X0X by Charles Vestal, which is built on Felucca by Hügelton Instruments.</span></a>
 </nav>
+<p class="small"><strong>Credits.</strong> GabberBuddy is a hack of <a href="https://github.com/charlesvestal/fm1-x0x">X0X</a> by Charles Vestal,
+which is built on <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita (Hügelton Instruments). The 909 is from
+9W9 and ER-99, the 808 from 8W8, the 303 from schwung-303 (Open303), TB-3PO, and the break generator from BB Gen. The
+<a href="__REPO__/blob/main/README.md">README</a> and <a href="manual/#19-credits">manual</a> list everyone.</p>
 <p class="small">To go back to the official firmware, use M-VAVE's own updater, M-UPGRADE, from
 <a href="https://www.m-vave.com/download">m-vave.com/download</a>. M-UPGRADE 3.11 finds v__VERSION__ but not older
 versions. For those, use "Back to the stock firmware" in the installer. M-VAVE and FM-1 are trademarks of their owners.</p>

@@ -1,3 +1,10 @@
+# GabberBuddy and X0X licensing
+
+GabberBuddy is a hack of [X0X](https://github.com/charlesvestal/fm1-x0x) by Charles Vestal, which is a fork of
+[Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita, Hügelton Instruments. GabberBuddy's changes (the gabber909
+Style, the master crusher, hard clip and EQ, the 303 SUPER and NOISE oscillators, the NEON theme and the CI builds) are also
+under `GPL-3.0-only`. Everything below is X0X's own table, which still applies in full.
+
 # X0X licensing
 
 X0X is free software under the GNU General Public License, version 3 only
