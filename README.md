@@ -17,6 +17,31 @@ CI builds, and has not had much time on a real FM-1. Installing it is at your ow
 
 Everything else is X0X. Its original README is [README.X0X.md](README.X0X.md), and its manual is in `docs/`.
 
+## Install
+
+**Web installer: <https://gybe808-dotcom.github.io/GabberBuddy/install/>**
+
+1. Open the installer in **Chrome or Edge** (it needs Web MIDI, so not Firefox or Safari).
+2. Connect the FM-1 with a **USB data cable** (a charge-only cable won't work) and switch it on.
+3. Press **Install** and allow the MIDI permission when the browser asks.
+4. **Don't unplug it** while it writes. When it finishes, the FM-1 restarts into GabberBuddy.
+
+Things to know first:
+
+- Installing replaces whatever firmware is on the FM-1, and a different firmware doesn't keep your patterns and sounds.
+  Back up anything you care about first.
+- To go back to M-VAVE's own firmware, use **Back to the stock firmware** at the bottom of the same installer page.
+- If an FM-1 running GabberBuddy keeps crashing, it starts in a safe mode where the installer can put a working firmware back.
+  The manual's Troubleshooting section covers the rest, and Felucca's
+  [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter) (a small RP2040 board) is the last resort.
+- Installing firmware is at your own risk.
+
+Also on the site: the **[emulator](https://gybe808-dotcom.github.io/GabberBuddy/emu/)** (hear it in your browser, no FM-1
+needed) and the **[manual](https://gybe808-dotcom.github.io/GabberBuddy/manual/)**.
+
+Command-line install (for people who prefer it): get `x0x-0.0.1-beta.fwsc` from the site's firmware folder, run
+`pip install mido python-rtmidi`, then `python tools/fm1_install.py x0x-0.0.1-beta.fwsc`.
+
 ## Credits
 
 GabberBuddy stands on other people's work. Please go and look at theirs:
