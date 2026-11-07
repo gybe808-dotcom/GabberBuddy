@@ -41,6 +41,14 @@ FONTSETS = {
               ("B", "Inter[opsz,wght].ttf@wght=700", 14, 1, False, 32, 126),
               ("M", "Inter[opsz,wght].ttf@wght=650", 21, 1, False, 32, 95),
               ("L", "Inter[opsz,wght].ttf@wght=700", 29, 1, False, 32, 57)],
+    # the NEON look: Terminus for the text, and the digits of M and L (knob values, big readouts) as a slanted
+    # seven-segment display drawn here (render_sevenseg: no font file, nothing to license)
+    "digital": [("T", "ter-u12n.bdf", 12, 1, True, 32, 95),
+                ("XS", "ter-u12n.bdf", 12, 1, True, 32, 126),
+                ("S", "ter-u16n.bdf", 16, 1, True, 32, 126),
+                ("B", "ter-u16b.bdf", 16, 1, True, 32, 126),
+                ("M", "@sevenseg+ter-u24b.bdf", 24, 1, True, 32, 95),
+                ("L", "@sevenseg+ter-u32b.bdf", 32, 1, True, 32, 57)],
     "rajdhani": [("XS", "Rajdhani-Bold.ttf", 14, 1, False, 32, 126),
                  ("S", "Rajdhani-SemiBold.ttf", 17, 1, False, 32, 126),
                  ("B", "Rajdhani-Bold.ttf", 17, 1, False, 32, 126),
@@ -53,7 +61,7 @@ FONTSETS = {
                ("L", "ChakraPetch-Bold.ttf", 29, 1, False, 32, 95)],
 }
 import os  # noqa: E402
-FONTSET = os.environ.get("X0X_FONTSET", "barlow")    # the others need X0X_FONT_DIRS (not in assets/)
+FONTSET = os.environ.get("X0X_FONTSET", "digital")   # barlow / inter / rajdhani / chakra need X0X_FONT_DIRS (not in assets/)
 FONTDIRS = [Path(p) for p in os.environ.get("X0X_FONT_DIRS", "").split(":") if p]
 SIZES = FONTSETS[FONTSET]
 PAD = 2
@@ -130,6 +138,69 @@ def render_bdf(path, scale, first, last):
     return ch * scale, out
 
 
+# A seven-segment display (the NEON look). Segments are drawn as pointed bars at 8x and averaged down (alpha 0..15),
+# sheared so the top leans right. The digit sits between the cap rows of the base face's 'H' and over the columns of its '0',
+# so a line of them lines up with the letters beside them.
+SEG_ON = {"0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc", "5": "afgcd", "6": "afgecd", "7": "abc",
+          "8": "abcdefg", "9": "abcdfg", "-": "g", ".": "."}
+SEG_SLANT = 0.10
+
+
+def sevenseg_alpha(ch, bw, h, top, bot, x0, x1):
+    ss = 8
+    img = Image.new("L", (bw * ss, h * ss), 0)
+    d = ImageDraw.Draw(img)
+    cap = bot + 1 - top
+    ht = max(2.0, round(cap * 0.115)) * ss / 2          # half the bar thickness (at least 2 px thick)
+    gap = 0.55 * ss
+    left, right = x0 * ss, (x1 - SEG_SLANT * cap) * ss
+    y0, y1 = top * ss, (bot + 1) * ss
+    xl, xr, yt, yb, ym = left + ht, right - ht, y0 + ht, y1 - ht, (y0 + y1) / 2
+
+    def poly(pts):
+        d.polygon([(x + SEG_SLANT * (y1 - y), y) for x, y in pts], fill=255)
+
+    def hseg(y):
+        a, b = xl + gap, xr - gap
+        poly([(a, y), (a + ht, y - ht), (b - ht, y - ht), (b, y), (b - ht, y + ht), (a + ht, y + ht)])
+
+    def vseg(x, ya, yb_):
+        a, b = ya + gap, yb_ - gap
+        poly([(x, a), (x + ht, a + ht), (x + ht, b - ht), (x, b), (x - ht, b - ht), (x - ht, a + ht)])
+
+    on = SEG_ON[ch]
+    if on == ".":
+        cx = (left + right) / 2
+        poly([(cx - ht, yb - ht), (cx + ht, yb - ht), (cx + ht, yb + ht), (cx - ht, yb + ht)])
+    else:
+        if "a" in on: hseg(yt)
+        if "g" in on: hseg(ym)
+        if "d" in on: hseg(yb)
+        if "f" in on: vseg(xl, yt, ym)
+        if "b" in on: vseg(xr, yt, ym)
+        if "e" in on: vseg(xl, ym, yb)
+        if "c" in on: vseg(xr, ym, yb)
+    img = img.resize((bw, h), Image.BOX)
+    return [min(15, (v + 8) // 17) for v in img.tobytes()]
+
+
+def render_sevenseg(spec, scale, first, last):
+    """"@sevenseg+FACE.bdf": FACE's glyphs, with the digits, '-' and '.' replaced by seven-segment ones"""
+    assert scale == 1, "sevenseg: scale 1 only"
+    face = spec.partition("+")[2]
+    h, glyphs = render_bdf(font_path(face), scale, first, last)
+    _, ref = render_bdf(font_path(face), scale, 32, 126)
+    bw = ref[0][1]
+    hrows = [r for r in range(h) if any(ref[ord("H") - 32][2][r * bw:(r + 1) * bw])]
+    zcols = [c for c in range(bw) if any(ref[ord("0") - 32][2][r * bw + c] for r in range(h))]
+    top, bot, x0, x1 = hrows[0], hrows[-1], zcols[0], zcols[-1] + 1
+    for i, c in enumerate(range(first, last + 1)):
+        if chr(c) in SEG_ON:
+            adv, gbw, _ = glyphs[i]
+            glyphs[i] = (adv, gbw, sevenseg_alpha(chr(c), gbw, h, top, bot, x0, x1))
+    return h, glyphs
+
+
 def font_path(name):
     for d in [FONTS, *FONTDIRS]:
         if (d / name).exists():
@@ -138,6 +209,8 @@ def font_path(name):
 
 
 def render(ttf, px, scale, pixel, first, last):
+    if ttf.startswith("@sevenseg"):
+        return render_sevenseg(ttf, scale, first, last)
     if ttf.endswith(".bdf"):
         return render_bdf(font_path(ttf), scale, first, last)
     name, _, var = ttf.partition("@")

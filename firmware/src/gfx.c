@@ -27,20 +27,29 @@ static int32_t cv_y0, cv_y1;     /* X0X: the rows drawing may touch (cv_band) */
 typedef struct {
     const char *name;
     uint16_t c[5];
+    uint16_t part[5];            /* the colour of each part (909 808 303A 303B BREAK): ui.c PART_COL */
 } palette_t;
 /* X0X: the first three steps are neutral greys in every theme (structure: rules, empty cells,
  * labels); only the two brightest carry the theme's hue (values, highlights). Colour on the
  * screen then means something: a part, a value, an alarm. */
 #define NEUTRALS RGB(34, 34, 40), RGB(74, 74, 82), RGB(150, 150, 158)
+/* the parts' colours in the original themes: orange, red, green, cyan, violet */
+#define PARTS_STD RGB(255, 150, 40), RGB(255, 72, 64), RGB(130, 240, 90), RGB(70, 205, 255), RGB(214, 120, 255)
+/* NEON (the gabber909 look): true black, every step a phosphor green (the rules and the labels too, not the
+ * neutral greys), the values in neon green #39FF14; the parts told apart by the shade of green: neon, acid lime,
+ * spring, mint, deep. Reds stay red (alarms, recording). New themes go at the END: the saved THEME is the index */
+#define PARTS_NEON RGB(57, 255, 20), RGB(170, 255, 0), RGB(0, 255, 130), RGB(120, 255, 190), RGB(0, 205, 70)
 static const palette_t PALETTES[] = {
-    {"GREEN", {NEUTRALS, RGB(80, 220, 120), RGB(150, 255, 175)}},
-    {"AMBER", {NEUTRALS, RGB(232, 136, 30), RGB(255, 184, 70)}},
-    {"CYAN", {NEUTRALS, RGB(60, 180, 235), RGB(150, 225, 255)}},
-    {"RED", {NEUTRALS, RGB(232, 76, 60), RGB(255, 132, 112)}},
-    {"MONO", {NEUTRALS, RGB(196, 196, 202), RGB(236, 236, 240)}},
+    {"GREEN", {NEUTRALS, RGB(80, 220, 120), RGB(150, 255, 175)}, {PARTS_STD}},
+    {"AMBER", {NEUTRALS, RGB(232, 136, 30), RGB(255, 184, 70)}, {PARTS_STD}},
+    {"CYAN", {NEUTRALS, RGB(60, 180, 235), RGB(150, 225, 255)}, {PARTS_STD}},
+    {"RED", {NEUTRALS, RGB(232, 76, 60), RGB(255, 132, 112)}, {PARTS_STD}},
+    {"MONO", {NEUTRALS, RGB(196, 196, 202), RGB(236, 236, 240)}, {PARTS_STD}},
+    {"NEON", {RGB(0, 44, 12), RGB(4, 86, 26), RGB(24, 150, 44), RGB(86, 216, 48), RGB(57, 255, 20)}, {PARTS_NEON}},
 };
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
 static uint16_t pal[5];
+static uint16_t PART_COL[5];     /* the selected theme's part colours (palette_set) */
 #define C_LINE pal[0]                /* 1 rules, separators */
 #define C_DIM pal[1]                 /* 2 inactive, empty steps, units */
 #define C_GRAY pal[2]                /* 3 labels */
@@ -50,8 +59,10 @@ static uint16_t pal[5];
 static void palette_set(uint32_t i)
 {
     uint32_t k;
-    for (k = 0; k < 5u; k++)
+    for (k = 0; k < 5u; k++) {
         pal[k] = PALETTES[i % NPALETTES].c[k];
+        PART_COL[k] = PALETTES[i % NPALETTES].part[k];
+    }
 }
 
 static inline uint16_t swap16(uint32_t c) { return (uint16_t)(((c >> 8) & 0xFFu) | ((c & 0xFFu) << 8)); }

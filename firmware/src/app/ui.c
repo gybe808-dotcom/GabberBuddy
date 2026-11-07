@@ -23,8 +23,7 @@ static uint8_t WHITE_KEY[16], BLACK_KEY[11];
 
 enum { V_HOME, V_PART, V_GEN, V_FX, V_MIX, V_GLO, V_SONG, V_PERF, V_SEQ, NVIEWS };
 static const char *const VIEW_N[NVIEWS] = {"HOME", "", "TB-3PO", "FX", "MIX", "GLOBAL", "SONG", "PERF", "SEQ"};
-static const uint16_t PART_COL[NPARTS] = {RGB(255, 150, 40), RGB(255, 72, 64), RGB(130, 240, 90), RGB(70, 205, 255),
-                                          RGB(214, 120, 255)};
+_Static_assert(NPARTS == 5, "gfx.c PART_COL holds the five parts' colours");   /* PART_COL: gfx.c, per theme */
 static const char *const PART_N[NPARTS] = {"909", "808", "303A", "303B", "BREAK"};
 static const char *const PART_S[NPARTS] = {"909", "808", "303A", "303B", "BRK"};   /* 4 chars: lane labels */
 
@@ -200,7 +199,7 @@ static const char *const RATE_N[] = {"1/16", "1/16T", "1/32", "1/8T"};
 static const char *const DIR_N[] = {"FWD", "REV", "PING", "RND"};
 static const char *const ONOFF_N[] = {"OFF", "ON"};
 static const char *const ROOT_N[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-static const char *const THEME_N[] = {"GREEN", "AMBER", "CYAN", "RED", "MONO"};
+static const char *const THEME_N[] = {"GREEN", "AMBER", "CYAN", "RED", "MONO", "NEON"};
 enum { G_DENS, G_ACC, G_SLIDE, G_OCTS, G_ROOT, G_SCALE, G_BASE, G_MUT, NGEN };
 static const x0x_param_t GEN_P[NGEN] = {
     {"DENS", 100, 70, 0}, {"ACCENT", 100, 40, 0}, {"SLIDE", 100, 25, 0}, {"OCTS", 2, 1, 0},
@@ -214,7 +213,7 @@ static const char *const LIGHTS_N[] = {"OFF", "ON", "KEYS"};   /* ON: the keys, 
 static const x0x_param_t SEQ_P[NSQ] = {
     {"SWING", 100, 0, 0}, {"LENGTH", NSTEPS - 1, 15, 0}, {"RATE", 3, 0, RATE_N}, {"LENGTH", NSTEPS - 1, 15, 0},
     {"RATE", 3, 0, RATE_N}, {"DIR", 3, 0, DIR_N}, {"TRANSP", 48, 24, 0}, {"TEMPO", 255, 105, 0},
-    {"ACCENT", 127, 88, 0}, {"CLOCK OUT", 1, 1, ONOFF_N}, {"NOTES OUT", 1, 0, ONOFF_N}, {"THEME", 4, 1, THEME_N},
+    {"ACCENT", 127, 88, 0}, {"CLOCK OUT", 1, 1, ONOFF_N}, {"NOTES OUT", 1, 0, ONOFF_N}, {"THEME", 5, 5, THEME_N},
     {"LIGHTS", 2, 1, LIGHTS_N}, {"KEY SOUND", 1, 0, KEYSOUND_N},
     {"AUTOSAVE", 1, 1, ONOFF_N},
 };
@@ -3863,11 +3862,11 @@ static uint16_t footer_text(const char **a, const char **b, const char **c)
         *b = "OCT-: MUTATE";
         return ui.gen_stale[bidx()] ? C_WHITE : C_AMB;
     } else if (is_drum()) {
-        *a = "BLACK: TRACK";
+        *a = "BLK: TRACK";                              /* (BLACK: 6 px a letter in the NEON look's Terminus: 4 px too wide) */
         *b = "WHITE: STEP";
         *c = "HOME+BLK: MUTE";
     } else if (is_303() && ui.rec) {
-        *a = "KEYS WRITE NOTES";
+        *a = "KEYS: NOTES";
         *b = "ENV+OCT: REST";
         *c = "LFO+OCT: TIE";
     } else if (kbd_on()) {
@@ -3879,7 +3878,7 @@ static uint16_t footer_text(const char **a, const char **b, const char **c)
         *b = "TAP: OFF";
         *c = "HOLD + KNOBS: EDIT";
     } else {
-        *a = "STEP + 1-8: PIN A SLICE";                /* (1-8 play the slices numbered above) */
+        *a = "STEP+1-8: SLICE";                        /* (1-8 play the slices numbered above) */
         *b = "9 REV 10 HALF 11 STUT";
     }
     return C_DIM;
