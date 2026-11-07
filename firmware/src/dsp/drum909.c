@@ -93,9 +93,9 @@ static const d9_pspec_t d9_kit_p[] = {
     { { "Style", 2, 0, d9_style_names }, F_STYLE, CV_SW, 0, 0.0f, 0.0f },   /* gabber909: macro over the voices' pots */
 };
 
-/* gabber909: the pots each style sets. Style 0 = the stock 909 values (the spec defaults), 1 = SAT, 2 = Fold. */
+/* gabber909: the pots each style sets. Style 0 = the factory 909's values (engine.c's factory sound: the kick's\n * decay 80 and drive 30; the rest are the spec defaults), 1 = SAT, 2 = Fold. */
 static const struct { uint8_t voice, idx, stock, sat, fold; } d9_style_tab[] = {
-    { DR_BD, 2,  90, 110, 110 }, { DR_BD, 4, 0, 100, 100 }, { DR_BD, 6, 0, 120, 120 }, { DR_BD, 7, 0, 2, 5 },
+    { DR_BD, 2,  80, 110, 110 }, { DR_BD, 4, 0, 100, 100 }, { DR_BD, 6, 30, 120, 120 }, { DR_BD, 7, 0, 2, 5 },
     { DR_SD, 5,  36, 100, 100 }, { DR_SD, 6, 0, 2, 5 },
     { DR_CP, 3,  30,  95,  95 }, { DR_CP, 4, 0, 1, 1 },
     { DR_CH, 3,   0,  70,  70 }, { DR_CH, 4, 0, 6, 6 },

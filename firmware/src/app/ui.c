@@ -392,8 +392,8 @@ static void pref_set(pref_t r, int v)
                 proj.sound.v[T_909][vo][ix] = (uint8_t)pt;
                 engine_set(T_909, vo, ix, pt);
             }
-            {   /* the 303s too: stock = Drive 0 (bypass), GAB-S = Soft saturation hard-driven, GAB-F = the RAT fuzz */
-                static const uint8_t DRV[3] = {0, 105, 100}, TYP[3] = {BASS303_DRV_SOFT, BASS303_DRV_SOFT, BASS303_DRV_RAT};
+            {   /* the 303s too: stock = the factory's Drive 45 and RAT, GAB-S = Soft saturation hard-driven, GAB-F = the RAT fuzz */
+                static const uint8_t DRV[3] = {45, 105, 100}, TYP[3] = {BASS303_DRV_RAT, BASS303_DRV_SOFT, BASS303_DRV_RAT};
                 for (n = 0; n < 2; n++) {
                     proj.sound.v[T_303][n][BASS303_DRIVE] = DRV[v];
                     proj.sound.v[T_303][n][BASS303_DRVTYPE] = TYP[v];
@@ -865,6 +865,8 @@ static void build_pages(void)
             more(PR(R_ENG, T_303, b, BASS303_VOLUME));
             more(PR(R_ENG, T_303, b, BASS303_DRVTYPE));
             more(PR(R_ENG, T_303, b, BASS303_ACCDEC));
+            more(PR(R_ENG, T_303, b, BASS303_SUPER));
+            more(PR(R_ENG, T_303, b, BASS303_SAWS));
         } else {
             pg_grp = GR_PAT;                           /* (its groove and retrigs: SEQ) */
             add_page("LOOPS", PR(R_BRKSLOT, 0, 0, 0), PR(R_BRKSLOT, 1, 0, 0), PR(R_BRKSET, 0, 0, BRK_BCHANCE),

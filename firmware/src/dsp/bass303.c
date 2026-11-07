@@ -42,6 +42,7 @@ static bass303_fixed_t bass303_k;     /* the coefficients every instance shares 
 /* ---- parameters ------------------------------------------------------------------------ */
 
 static const char *const wave_names[] = { "Saw", "Sqr" };
+static const char *const saws_names[] = { "3", "5", "7" };
 static const char *const drv_names[] = { "Off", "Soft", "RAT" };
 
 /* defaults are schwung-303's (every knob at 0.5, Devilfish values stock), except Volume,
@@ -59,6 +60,8 @@ static const x0x_param_t params[BASS303_NPARAMS] = {
     { "DrvTyp", 2, 1, drv_names },
     { "Slide", 127, 21, 0 },         /* 2 .. 360 ms (Devilfish); 21 = 61 ms, stock is 60 */
     { "AccDec", 127, 7, 0 },         /* 30 .. 3000 ms (Devilfish); 7 = 194 ms, stock is 200 */
+    { "Super", 127, 0, 0 },          /* gabber: 0 = off (the plain saw), else the saws' detune: 0.4 .. 12 % a step */
+    { "Saws", 2, 0, saws_names },    /* gabber: 3, 5 or 7 saws in all */
 };
 
 int bass303_nparams(void) { return BASS303_NPARAMS; }
@@ -199,6 +202,9 @@ void bass303_set(bass303_t *b, int i, int v)
         break;
     case BASS303_ACCENT:
         b->accent = n;
+        break;
+    case BASS303_SUPER:
+        b->sup_dr = v ? 0.0039f * (1.0f + (float)(v - 1) * (31.0f / 126.0f)) : 0.0f;
         break;
     case BASS303_WAVE:
         b->wave = v;
@@ -344,6 +350,8 @@ void bass303_init(bass303_t *b)
     for (i = 0; i < BASS303_NPARAMS; i++)
         bass303_set(b, i, params[i].def);
 
+    for (i = 0; i < 6; i++)                                    /* the super-saw's saws start apart */
+        b->sph[i] = 0.137f * (float)(i + 1);
     b->osc_freq = b->slew_y = 440.0f;
     b->env_c = b->decay_c;
     env_tables(b);
@@ -785,6 +793,59 @@ static BASS303_PASS void run_osc_sqr(bass303_t *b, const bass303_cs_t *cs, float
     osc_samples(b, cs, hb, n, BASS303_OS, 1);
 }
 
+/* gabber SUPER: the Saw303 plus up to 6 more, each at its own detune (ratios 1 +- j * sup_dr), summed, then the
+ * same highpass. A plain function in flash, not one of the RAM passes (RAM is nearly full); not used while the
+ * overload guard (lite) is on, which plays the plain saw. */
+static void osc_super_samples(bass303_t *b, const bass303_cs_t *cs, float *hb, int n, int nos)
+{
+    static const float G[3] = { 0.55f, 0.42f, 0.36f };            /* 3, 5, 7 saws: about 1 / sqrt(count) */
+    const int ne = 2 + 2 * (b->pot[BASS303_SAWS] > 2 ? 2 : b->pot[BASS303_SAWS]);
+    const float gain = G[(ne - 2) >> 1], dr = b->sup_dr;
+    float r[6], ph[6];
+    const float hp1_b0 = bass303_k.hp1_b0, hp1_a1 = bass303_k.hp1_a1;
+    float phase = b->phase, hp1x = b->hp1_x1, hp1y = b->hp1_y1;
+    int i, q, k;
+    for (k = 0; k < ne; k++) {                                     /* neighbours alternate up, down: +1 -1 +2 -2 +3 -3 */
+        const float j = (float)((k >> 1) + 1);
+        r[k] = 1.0f + ((k & 1) ? -j : j) * dr;
+        ph[k] = b->sph[k];
+    }
+    for (i = 0; i < n; i++) {
+        const float inc = cs[i].inc;
+        for (q = 0; q < nos; q++) {
+            float t = phase + 0.5f, s, ym;
+            if (t >= 1.0f)
+                t -= 1.0f;
+            s = -(t + t - 1.0f - blep(t, inc));
+            phase += inc;
+            if (phase >= 1.0f)
+                phase -= 1.0f;
+            for (k = 0; k < ne; k++) {
+                const float pinc = inc * r[k];
+                float p = ph[k];
+                t = p + 0.5f;
+                if (t >= 1.0f)
+                    t -= 1.0f;
+                s -= t + t - 1.0f - blep(t, pinc);
+                p += pinc;
+                if (p >= 1.0f)
+                    p -= 1.0f;
+                ph[k] = p;
+            }
+            s *= gain;
+            ym = hp1_b0 * (s - hp1x) + hp1_a1 * hp1y;
+            hp1x = s;
+            hp1y = ym;
+            *hb++ = ym;
+        }
+    }
+    b->phase = phase;
+    for (k = 0; k < ne; k++)
+        b->sph[k] = ph[k];
+    b->hp1_x1 = hp1x;
+    b->hp1_y1 = hp1y;
+}
+
 /* 1c: the TeeBeeFilter (its feedback through the highpass) on x's n * nos values, in place */
 static inline __attribute__((always_inline)) void ladder_samples(bass303_t *b, const bass303_cs_t *cs, float *x,
                                                                  int n, int nos)
@@ -825,7 +886,13 @@ static void run_voice(bass303_t *b, float *ab, float *osb, int n, int nos)
 {
     bass303_cs_t cs[BASS303_SUB];
     run_control(b, cs, ab, n);
-    if (nos == BASS303_OS) {
+    if (b->pot[BASS303_SUPER] && !b->wave && !(BASS303_LITE && b->lite)) {   /* gabber SUPER (Saw wave, not in lite) */
+        osc_super_samples(b, cs, osb, n, nos);
+        if (nos == BASS303_OS)
+            run_ladder(b, cs, osb, n);
+        else
+            ladder_samples(b, cs, osb, n, nos);
+    } else if (nos == BASS303_OS) {
         if (b->wave)
             run_osc_sqr(b, cs, osb, n);
         else

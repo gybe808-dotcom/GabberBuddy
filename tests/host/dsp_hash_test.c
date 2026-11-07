@@ -112,7 +112,7 @@ static void s303(const char *name, int wave, int drv, int lite, int blk, int swe
             step++;
             if (sweep)
                 for (v = 0; v < 2; v++) {
-                    int p = (int)(rnd() % BASS303_NPARAMS), max = bass303_param(p)->max;
+                    int p = (int)(rnd() % (BASS303_ACCDEC + 1))     /* (not SUPER / SAWS: the goldens' draws stay) */, max = bass303_param(p)->max;
                     if (p == BASS303_WAVE || p == BASS303_DRVTYPE)
                         continue;
                     bass303_set(&b3[v], p, (int)(rnd() % (unsigned)(max + 1)));
