@@ -13,6 +13,7 @@
 #include "x0x.h"
 #include "../dsp/fastmath.h"
 #include "../dsp/master.h"
+#include "../dsp/drum909.h"                   /* DR_KIT_STYLE: the gabber909 macro */
 #include "../dsp/bass303.h"                    /* BASS303_* (the 303's pages) */
 #include "undo.c"
 
@@ -385,6 +386,13 @@ static void pref_set(pref_t r, int v)
     case R_ENG:
         proj.sound.v[r.a][r.b][r.c] = (uint8_t)v;
         engine_set(r.a, r.b, r.c, v);
+        if (r.a == T_909 && r.b == DR_KIT && r.c == DR_KIT_STYLE) {   /* gabber909: the style sets its voices' pots */
+            int vo, ix, pt, n;
+            for (n = 0; drum909_style_pot(v, n, &vo, &ix, &pt); n++) {
+                proj.sound.v[T_909][vo][ix] = (uint8_t)pt;
+                engine_set(T_909, vo, ix, pt);
+            }
+        }
         if (r.a == T_MST && r.c == MST_COMP1)          /* the macros: the details they set, for the list */
             master_comp1_pots(v, &proj.sound.v[T_MST][0][MST_THRESH], &proj.sound.v[T_MST][0][MST_RATIO],
                               &proj.sound.v[T_MST][0][MST_MAKEUP]);
@@ -830,7 +838,7 @@ static void build_pages(void)
             add_track_pages(t, ui.sel[p]);
             pg_grp = GR_KIT;
             if (p == PART_909)                         /* (the kit's gain: the mixer's level does it) */
-                add_page("KIT", PR(R_ENG, T_909, NDRUM, 1), NONE, NONE, NONE);
+                add_page("KIT", PR(R_ENG, T_909, NDRUM, 1), PR(R_ENG, T_909, NDRUM, 2), NONE, NONE);
             else
                 add_page("KIT", PR(R_ENG, T_808, NDRUM, 1), NONE, NONE, NONE);
         } else if (is_303()) {

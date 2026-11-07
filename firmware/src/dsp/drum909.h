@@ -118,5 +118,9 @@ const x0x_param_t *drum909_param(int voice, int i);
 void drum909_set(drum909_t *d, int voice, int i, int value);
 int drum909_get(const drum909_t *d, int voice, int i);
 
+/* gabber909 style (kit param DR_KIT_STYLE: 0 = 909, 1 = GAB-S, 2 = GAB-F): the n-th pot it sets; 0 when n is past the end */
+#define DR_KIT_STYLE 2
+int drum909_style_pot(int style, int n, int *voice, int *idx, int *pot);
+
 /* true while any voice is still sounding (for a caller that wants to skip work) */
 int drum909_active(const drum909_t *d);

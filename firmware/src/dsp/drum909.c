@@ -27,7 +27,7 @@ static inline float d9_diode20(float x) { return d9_tanh(2.0f * x) * D9_INV_TANH
 /* ===================================================================== */
 enum { CV_LIN, CV_EXP, CV_SW };
 enum { F_TUNE, F_ATTACK, F_DECAY, F_LEVEL, F_PDEPTH, F_PITCH, F_DRIVE, F_DIST, F_REV, F_DLY,
-       F_TONE, F_SNAPPY, F_TAIL, F_ACCENT, F_VEL, F_PAN };
+       F_TONE, F_SNAPPY, F_TAIL, F_ACCENT, F_VEL, F_PAN, F_STYLE };
 
 typedef struct {
     x0x_param_t ui;
@@ -87,9 +87,29 @@ static const d9_pspec_t d9_cr_p[] = {
 static const d9_pspec_t d9_rd_p[] = {
     EXP("Tune", F_TUNE, 64, SMP_PITCH), LEVEL(42), EXP("Decay", F_DECAY, 108, CY_DECAY), DRIVE(0), DIST, SENDS, PAN,
 };
+static const char *const d9_style_names[3] = { "909", "GAB-S", "GAB-F" };
 static const d9_pspec_t d9_kit_p[] = {
     LIN("Accent", F_ACCENT, 42, 1.0f, 4.0f), LIN("Veloc", F_VEL, 127, 0.0f, 1.0f),
+    { { "Style", 2, 0, d9_style_names }, F_STYLE, CV_SW, 0, 0.0f, 0.0f },   /* gabber909: macro over the voices' pots */
 };
+
+/* gabber909: the pots each style sets. Style 0 = the stock 909 values (the spec defaults), 1 = SAT, 2 = Fold. */
+static const struct { uint8_t voice, idx, stock, sat, fold; } d9_style_tab[] = {
+    { DR_BD, 2,  90, 110, 110 }, { DR_BD, 4, 0, 100, 100 }, { DR_BD, 6, 0, 120, 120 }, { DR_BD, 7, 0, 2, 5 },
+    { DR_SD, 5,  36, 100, 100 }, { DR_SD, 6, 0, 2, 5 },
+    { DR_CP, 3,  30,  95,  95 }, { DR_CP, 4, 0, 1, 1 },
+    { DR_CH, 3,   0,  70,  70 }, { DR_CH, 4, 0, 6, 6 },
+    { DR_OH, 3,   0,  70,  70 }, { DR_OH, 4, 0, 6, 6 },
+};
+int drum909_style_pot(int style, int n, int *voice, int *idx, int *pot)
+{
+    if (n < 0 || n >= (int)(sizeof(d9_style_tab) / sizeof(d9_style_tab[0])))
+        return 0;
+    *voice = d9_style_tab[n].voice;
+    *idx = d9_style_tab[n].idx;
+    *pot = style == 1 ? d9_style_tab[n].sat : style == 2 ? d9_style_tab[n].fold : d9_style_tab[n].stock;
+    return 1;
+}
 
 #define NP(a) ((int)(sizeof(a) / sizeof(a[0])))
 static const d9_pspec_t *const d9_specs[DR_NUM + 1] = {
@@ -168,6 +188,7 @@ static void d9_apply(drum909_t *d, int voice, int field, float v)
         return;
     }
     if (voice == DR_KIT) {
+        if (field == F_STYLE) return;   /* the UI applies the style's pots (drum909_style_pot) */
         if (field == F_ACCENT) d->accent = v;
         else d->vel_depth = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
         return;

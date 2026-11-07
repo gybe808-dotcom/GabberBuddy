@@ -137,6 +137,8 @@ static void rand_pots(int is909, int voice)
 {
     int np = is909 ? drum909_nparams(voice) : drum808_nparams(voice), i;
     for (i = 0; i < np; i++) {
+        if (is909 && voice == DR_KIT && i == DR_KIT_STYLE)
+            continue;                              /* gabber909's macro has no DSP of its own (and would shift the goldens' RNG) */
         const x0x_param_t *p = is909 ? drum909_param(voice, i) : drum808_param(voice, i);
         int val = (int)(rnd() % (unsigned)(p->max + 1));
         if ((rnd() % 3) == 0)
