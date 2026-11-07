@@ -386,6 +386,10 @@ static void pref_set(pref_t r, int v)
     case R_ENG:
         proj.sound.v[r.a][r.b][r.c] = (uint8_t)v;
         engine_set(r.a, r.b, r.c, v);
+        if (r.a == T_FX && r.b == 0 && r.c == FX_DRIVE && v > 0 && !proj.sound.v[T_FX][0][FX_DIST]) {
+            proj.sound.v[T_FX][0][FX_DIST] = 3;          /* the master DRIVE does nothing while DIST is OFF: turning it up */
+            engine_set(T_FX, 0, FX_DIST, 3);             /* from OFF turns DIST on, to SAT (the SEL list still picks any) */
+        }
         if (r.a == T_909 && r.b == DR_KIT && r.c == DR_KIT_STYLE) {   /* gabber909: the style sets its voices' pots */
             int vo, ix, pt, n;
             for (n = 0; drum909_style_pot(v, n, &vo, &ix, &pt); n++) {
