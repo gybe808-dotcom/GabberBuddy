@@ -15,6 +15,7 @@
 #ifndef X0X_VERSION                     /* a release build passes its own (tools/build.py --release) */
 #define X0X_VERSION "DEV"
 #endif
+#define X0X_NAME "GABBERBUDDY"            /* what the screens call this firmware (it is a hack of X0X) */
 #define PROJ_MAGIC 0x50305830u           /* "0X0P" */
 #define PROJ_FORMAT 1u
 #define PROJ_STEREO 2u

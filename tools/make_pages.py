@@ -12,7 +12,7 @@
   backup/index.html           the project to a file and back (web/backup/index.html; Chrome or Edge, Web MIDI)
   manual/index.html, img/     the manual (tools/manual_html.py, from docs/MANUAL.md)
   new/index.html, img/new/    what's new in each version (the same, from docs/NEW.md)
-  firmware/x0x-VERSION.fwsc   the package the installer writes; also the download
+  firmware/gabberbuddy-VERSION.fwsc   the package the installer writes; also the download
 
   tools/make_pages.py build/x0x-0.1-beta.fwsc 0.1-beta OUT_DIR
 
@@ -112,7 +112,7 @@ def main(pkg, version, out):
         raise SystemExit(f"{pkg}: identity {product!r}: make a release build (./build.sh --release X.Y-beta)")
     if b"FELUCCA-LOADER-1" not in raw:
         raise SystemExit(f"{pkg}: no update loader in it")
-    name = f"x0x-{re.sub(r'[^A-Za-z0-9.-]', '-', version)}.fwsc"
+    name = f"gabberbuddy-{re.sub(r'[^A-Za-z0-9.-]', '-', version)}.fwsc"
     if out.exists():
         shutil.rmtree(out)
     for d in ("install", "manual", "firmware", "breaks", "backup", "new"):

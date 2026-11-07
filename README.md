@@ -39,8 +39,8 @@ Things to know first:
 Also on the site: the **[emulator](https://gybe808-dotcom.github.io/GabberBuddy/emu/)** (hear it in your browser, no FM-1
 needed) and the **[manual](https://gybe808-dotcom.github.io/GabberBuddy/manual/)**.
 
-Command-line install (for people who prefer it): get `x0x-0.0.1-beta.fwsc` from the site's firmware folder, run
-`pip install mido python-rtmidi`, then `python tools/fm1_install.py x0x-0.0.1-beta.fwsc`.
+Command-line install (for people who prefer it): get `gabberbuddy-0.0.1-beta.fwsc` from the site's firmware folder, run
+`pip install mido python-rtmidi`, then `python tools/fm1_install.py gabberbuddy-0.0.1-beta.fwsc`.
 
 ## Credits
 
